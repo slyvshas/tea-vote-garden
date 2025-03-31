@@ -7,9 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, ThumbsUp, ThumbsDown, MapPin, Clock } from 'lucide-react';
 import { useTeaShops } from '@/context/TeaShopContext';
 import Rating from '@/components/Rating';
+import { toast } from '@/components/ui/use-toast';
 
-const TeaShopDetailPage: React.FC = () => {
-  const { id } = useParams<{ id: string }>();
+const TeaShopDetailPage = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
   const { getTeaShopById, upvoteTeaShop, downvoteTeaShop } = useTeaShops();
   
@@ -24,6 +25,22 @@ const TeaShopDetailPage: React.FC = () => {
   if (!shop) {
     return null;
   }
+
+  const handleUpvote = () => {
+    upvoteTeaShop(shop.id);
+    toast({
+      title: "Upvoted!",
+      description: `You upvoted ${shop.name}`,
+    });
+  };
+
+  const handleDownvote = () => {
+    downvoteTeaShop(shop.id);
+    toast({
+      title: "Downvoted",
+      description: `You downvoted ${shop.name}`,
+    });
+  };
   
   return (
     <div className="animate-fade-in">
@@ -124,7 +141,7 @@ const TeaShopDetailPage: React.FC = () => {
               
               <div className="grid grid-cols-2 gap-4">
                 <Button 
-                  onClick={() => upvoteTeaShop(shop.id)}
+                  onClick={handleUpvote}
                   className="bg-tea-leaf hover:bg-tea-leaf/90 text-white flex items-center justify-center"
                 >
                   <ThumbsUp size={16} className="mr-2" />
@@ -132,7 +149,7 @@ const TeaShopDetailPage: React.FC = () => {
                 </Button>
                 <Button 
                   variant="outline"
-                  onClick={() => downvoteTeaShop(shop.id)}
+                  onClick={handleDownvote}
                   className="border-red-500 text-red-500 hover:bg-red-500/10 flex items-center justify-center"
                 >
                   <ThumbsDown size={16} className="mr-2" />
