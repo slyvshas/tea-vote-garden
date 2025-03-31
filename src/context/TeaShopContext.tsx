@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { TeaShop, mockTeaShops } from '../data/mockTeaShops';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Tables } from '@/integrations/supabase/types'; // Import the Tables type
+import { Database } from '@/integrations/supabase/types'; // Import the Database type
 
 interface TeaShopContextType {
   teaShops: TeaShop[];
@@ -38,7 +38,7 @@ export const TeaShopProvider: React.FC<{ children: React.ReactNode }> = ({ child
         await seedInitialData();
       } else if (data) {
         // Transform the data to match the TeaShop interface
-        const transformedData: TeaShop[] = data.map((shop: Tables['tea_shops']['Row']) => ({
+        const transformedData: TeaShop[] = data.map((shop: Database['public']['Tables']['tea_shops']['Row']) => ({
           id: shop.id,
           name: shop.name,
           description: shop.description,
