@@ -32,12 +32,27 @@ export const TeaShopProvider: React.FC<{ children: React.ReactNode }> = ({ child
         console.error('Error fetching tea shops:', error);
         // Fall back to mock data if there's an error
         setTeaShops(mockTeaShops);
-      } else if (data.length === 0) {
+      } else if (data && data.length === 0) {
         // If no data in Supabase yet, seed with mock data
         console.log('No tea shops found in database, seeding with mock data');
         await seedInitialData();
-      } else {
-        setTeaShops(data);
+      } else if (data) {
+        // Transform the data to match the TeaShop interface
+        const transformedData: TeaShop[] = data.map((shop: Tables['tea_shops']['Row']) => ({
+          id: shop.id,
+          name: shop.name,
+          description: shop.description,
+          address: shop.address,
+          image: shop.image,
+          specialty: shop.specialty,
+          rating: shop.rating ?? 0,
+          votes: typeof shop.votes === 'object' ? shop.votes as TeaShop['votes'] : { upvotes: 0, downvotes: 0 },
+          hours: typeof shop.hours === 'object' ? shop.hours as TeaShop['hours'] : { open: "9:00 AM", close: "5:00 PM" },
+          tags: shop.tags,
+          created_at: shop.created_at || undefined,
+          updated_at: shop.updated_at || undefined
+        }));
+        setTeaShops(transformedData);
       }
     } catch (error) {
       console.error('Error in fetchTeaShops:', error);
@@ -99,11 +114,29 @@ export const TeaShopProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return;
       }
       
-      setTeaShops(prev => [...prev, data]);
-      toast({
-        title: "Tea Shop Added",
-        description: `${newShop.name} has been added to the directory.`,
-      });
+      if (data) {
+        const newTeaShop: TeaShop = {
+          id: data.id,
+          name: data.name,
+          description: data.description,
+          address: data.address,
+          image: data.image,
+          specialty: data.specialty,
+          rating: data.rating ?? 0,
+          votes: typeof data.votes === 'object' ? data.votes as TeaShop['votes'] : { upvotes: 0, downvotes: 0 },
+          hours: typeof data.hours === 'object' ? data.hours as TeaShop['hours'] : { open: "9:00 AM", close: "5:00 PM" },
+          tags: data.tags,
+          created_at: data.created_at || undefined,
+          updated_at: data.updated_at || undefined
+        };
+        
+        setTeaShops(prev => [...prev, newTeaShop]);
+        
+        toast({
+          title: "Tea Shop Added",
+          description: `${newShop.name} has been added to the directory.`,
+        });
+      }
     } catch (error) {
       console.error('Error in addTeaShop:', error);
       toast({
