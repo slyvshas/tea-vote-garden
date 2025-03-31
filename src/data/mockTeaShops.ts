@@ -16,6 +16,8 @@ export interface TeaShop {
     close: string;
   };
   tags: string[];
+  created_at?: string; // Added this field to match database schema
+  updated_at?: string; // Added this field to match database schema
 }
 
 export const mockTeaShops: TeaShop[] = [

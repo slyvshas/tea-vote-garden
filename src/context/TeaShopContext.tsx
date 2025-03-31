@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { TeaShop, mockTeaShops } from '../data/mockTeaShops';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { Tables } from '@/integrations/supabase/types'; // Import the Tables type
 
 interface TeaShopContextType {
   teaShops: TeaShop[];
