@@ -26,23 +26,23 @@ const Navbar: React.FC = () => {
             </Link>
           </div>
           
-          <div className="flex space-x-2">
+          <div className="flex space-x-4">
             <Link to="/">
-              <Button variant="ghost" size="icon" className="text-tea-leaf dark:text-tea-matcha">
+              <Button variant="ghost" size={isMobile ? "icon" : "default"} className="text-tea-leaf dark:text-tea-matcha">
                 <Home size={isMobile ? 20 : 18} />
                 {!isMobile && <span className="ml-2">Home</span>}
               </Button>
             </Link>
             
             <Link to="/tea-shops">
-              <Button variant="ghost" size="icon" className="text-tea-leaf dark:text-tea-matcha">
+              <Button variant="ghost" size={isMobile ? "icon" : "default"} className="text-tea-leaf dark:text-tea-matcha">
                 <List size={isMobile ? 20 : 18} />
                 {!isMobile && <span className="ml-2">All Shops</span>}
               </Button>
             </Link>
             
             <Link to="/add">
-              <Button variant="ghost" size="icon" className="text-tea-leaf dark:text-tea-matcha">
+              <Button variant="ghost" size={isMobile ? "icon" : "default"} className="text-tea-leaf dark:text-tea-matcha">
                 <PlusCircle size={isMobile ? 20 : 18} />
                 {!isMobile && <span className="ml-2">Add Shop</span>}
               </Button>
