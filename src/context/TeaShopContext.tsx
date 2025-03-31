@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { TeaShop, mockTeaShops } from '../data/mockTeaShops';
 import { toast } from '@/components/ui/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TeaShopContextType {
   teaShops: TeaShop[];
@@ -16,77 +17,194 @@ const TeaShopContext = createContext<TeaShopContextType | undefined>(undefined);
 
 export const TeaShopProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [teaShops, setTeaShops] = useState<TeaShop[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    // Load from localStorage or use mock data
-    const savedShops = localStorage.getItem('teaShops');
-    if (savedShops) {
-      setTeaShops(JSON.parse(savedShops));
-    } else {
+  // Fetch tea shops from Supabase
+  const fetchTeaShops = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('tea_shops')
+        .select('*');
+      
+      if (error) {
+        console.error('Error fetching tea shops:', error);
+        // Fall back to mock data if there's an error
+        setTeaShops(mockTeaShops);
+      } else if (data.length === 0) {
+        // If no data in Supabase yet, seed with mock data
+        console.log('No tea shops found in database, seeding with mock data');
+        await seedInitialData();
+      } else {
+        setTeaShops(data);
+      }
+    } catch (error) {
+      console.error('Error in fetchTeaShops:', error);
+      setTeaShops(mockTeaShops);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Seed initial data with mock data
+  const seedInitialData = async () => {
+    try {
+      // Insert mock data into Supabase
+      const { error } = await supabase
+        .from('tea_shops')
+        .insert(mockTeaShops);
+      
+      if (error) {
+        console.error('Error seeding data:', error);
+        setTeaShops(mockTeaShops);
+      } else {
+        console.log('Successfully seeded tea shops data');
+        // Fetch the newly inserted data
+        await fetchTeaShops();
+      }
+    } catch (error) {
+      console.error('Error in seedInitialData:', error);
       setTeaShops(mockTeaShops);
     }
-  }, []);
+  };
 
   useEffect(() => {
-    // Save to localStorage whenever teaShops changes
-    localStorage.setItem('teaShops', JSON.stringify(teaShops));
-  }, [teaShops]);
+    fetchTeaShops();
+  }, []);
 
-  const addTeaShop = (newShop: Omit<TeaShop, 'id' | 'votes'>) => {
-    const shop: TeaShop = {
-      ...newShop,
-      id: Date.now().toString(),
-      votes: {
-        upvotes: 0,
-        downvotes: 0
+  const addTeaShop = async (newShop: Omit<TeaShop, 'id' | 'votes'>) => {
+    try {
+      const shopData = {
+        ...newShop,
+        votes: {
+          upvotes: 0,
+          downvotes: 0
+        }
+      };
+      
+      const { data, error } = await supabase
+        .from('tea_shops')
+        .insert(shopData)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Error adding tea shop:', error);
+        toast({
+          title: "Error",
+          description: "Failed to add tea shop. Please try again.",
+          variant: "destructive",
+        });
+        return;
       }
-    };
-    
-    setTeaShops(prev => [...prev, shop]);
-    toast({
-      title: "Tea Shop Added",
-      description: `${newShop.name} has been added to the directory.`,
-    });
+      
+      setTeaShops(prev => [...prev, data]);
+      toast({
+        title: "Tea Shop Added",
+        description: `${newShop.name} has been added to the directory.`,
+      });
+    } catch (error) {
+      console.error('Error in addTeaShop:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add tea shop. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
-  const upvoteTeaShop = (id: string) => {
-    setTeaShops(prev => 
-      prev.map(shop => 
-        shop.id === id 
-          ? { 
-              ...shop, 
-              votes: { 
-                ...shop.votes, 
-                upvotes: shop.votes.upvotes + 1 
-              },
-              rating: calculateRating(
-                shop.votes.upvotes + 1,
-                shop.votes.downvotes
-              )
-            } 
-          : shop
-      )
-    );
+  const upvoteTeaShop = async (id: string) => {
+    try {
+      // Get the current shop
+      const shop = teaShops.find(s => s.id === id);
+      if (!shop) return;
+      
+      // Calculate new values
+      const newUpvotes = shop.votes.upvotes + 1;
+      const newRating = calculateRating(newUpvotes, shop.votes.downvotes);
+      
+      // Update in Supabase
+      const { error } = await supabase
+        .from('tea_shops')
+        .update({ 
+          votes: { 
+            upvotes: newUpvotes, 
+            downvotes: shop.votes.downvotes 
+          },
+          rating: newRating
+        })
+        .eq('id', id);
+      
+      if (error) {
+        console.error('Error upvoting tea shop:', error);
+        return;
+      }
+      
+      // Update local state
+      setTeaShops(prev => 
+        prev.map(shop => 
+          shop.id === id 
+            ? { 
+                ...shop, 
+                votes: { 
+                  ...shop.votes, 
+                  upvotes: newUpvotes 
+                },
+                rating: newRating
+              } 
+            : shop
+        )
+      );
+    } catch (error) {
+      console.error('Error in upvoteTeaShop:', error);
+    }
   };
 
-  const downvoteTeaShop = (id: string) => {
-    setTeaShops(prev => 
-      prev.map(shop => 
-        shop.id === id 
-          ? { 
-              ...shop, 
-              votes: { 
-                ...shop.votes, 
-                downvotes: shop.votes.downvotes + 1 
-              },
-              rating: calculateRating(
-                shop.votes.upvotes,
-                shop.votes.downvotes + 1
-              )
-            } 
-          : shop
-      )
-    );
+  const downvoteTeaShop = async (id: string) => {
+    try {
+      // Get the current shop
+      const shop = teaShops.find(s => s.id === id);
+      if (!shop) return;
+      
+      // Calculate new values
+      const newDownvotes = shop.votes.downvotes + 1;
+      const newRating = calculateRating(shop.votes.upvotes, newDownvotes);
+      
+      // Update in Supabase
+      const { error } = await supabase
+        .from('tea_shops')
+        .update({ 
+          votes: { 
+            upvotes: shop.votes.upvotes, 
+            downvotes: newDownvotes 
+          },
+          rating: newRating
+        })
+        .eq('id', id);
+      
+      if (error) {
+        console.error('Error downvoting tea shop:', error);
+        return;
+      }
+      
+      // Update local state
+      setTeaShops(prev => 
+        prev.map(shop => 
+          shop.id === id 
+            ? { 
+                ...shop, 
+                votes: { 
+                  ...shop.votes, 
+                  downvotes: newDownvotes 
+                },
+                rating: newRating
+              } 
+            : shop
+        )
+      );
+    } catch (error) {
+      console.error('Error in downvoteTeaShop:', error);
+    }
   };
 
   const calculateRating = (upvotes: number, downvotes: number): number => {
@@ -111,13 +229,22 @@ export const TeaShopProvider: React.FC<{ children: React.ReactNode }> = ({ child
           return bScore - aScore;
         });
       case 'newest':
-        return [...teaShops].sort((a, b) => parseInt(b.id) - parseInt(a.id));
+        return [...teaShops].sort((a, b) => {
+          // For Supabase data, we can use the created_at timestamp
+          const aDate = new Date(a.created_at || 0).getTime();
+          const bDate = new Date(b.created_at || 0).getTime();
+          return bDate - aDate;
+        });
       case 'alphabetical':
         return [...teaShops].sort((a, b) => a.name.localeCompare(b.name));
       default:
         return teaShops;
     }
   };
+
+  if (loading) {
+    return <div className="flex justify-center items-center h-screen">Loading tea shops...</div>;
+  }
 
   return (
     <TeaShopContext.Provider 
