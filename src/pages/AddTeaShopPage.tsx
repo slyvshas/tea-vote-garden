@@ -9,11 +9,24 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/components/ui/use-toast';
 import { useTeaShops } from '@/context/TeaShopContext';
 
+interface FormData {
+  name: string;
+  description: string;
+  address: string;
+  image: string;
+  specialty: string;
+  hours: {
+    open: string;
+    close: string;
+  };
+  tags: string;
+}
+
 const AddTeaShopPage: React.FC = () => {
   const navigate = useNavigate();
   const { addTeaShop } = useTeaShops();
   
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormData>({
     name: '',
     description: '',
     address: '',
@@ -36,7 +49,7 @@ const AddTeaShopPage: React.FC = () => {
       setFormData((prev) => ({
         ...prev,
         [parent]: {
-          ...prev[parent as keyof typeof prev],
+          ...(prev[parent as keyof FormData] as Record<string, unknown>),
           [child]: value,
         },
       }));
