@@ -1,14 +1,23 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Sun, Moon, Home, PlusCircle, List } from 'lucide-react';
+import { Sun, Moon, Home, List, PlusCircle, LogOut } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { useAuth } from '@/context/AuthContext';
 
 const Navbar: React.FC = () => {
   const { theme, toggleTheme } = useTheme();
   const isMobile = useIsMobile();
+  const { user, isAdmin, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
 
   return (
     <nav className="sticky top-0 z-50 bg-white dark:bg-gray-900 shadow-md transition-colors duration-300">
@@ -26,7 +35,7 @@ const Navbar: React.FC = () => {
             </Link>
           </div>
           
-          <div className="flex space-x-4">
+          <div className="flex items-center space-x-2">
             <Link to="/">
               <Button variant="ghost" size={isMobile ? "icon" : "default"} className="text-tea-leaf dark:text-tea-matcha">
                 <Home size={isMobile ? 20 : 18} />
@@ -41,12 +50,14 @@ const Navbar: React.FC = () => {
               </Button>
             </Link>
             
-            <Link to="/add">
-              <Button variant="ghost" size={isMobile ? "icon" : "default"} className="text-tea-leaf dark:text-tea-matcha">
-                <PlusCircle size={isMobile ? 20 : 18} />
-                {!isMobile && <span className="ml-2">Add Shop</span>}
-              </Button>
-            </Link>
+            {isAdmin && (
+              <Link to="/add">
+                <Button variant="ghost" size={isMobile ? "icon" : "default"} className="text-tea-leaf dark:text-tea-matcha">
+                  <PlusCircle size={isMobile ? 20 : 18} />
+                  {!isMobile && <span className="ml-2">Add Shop</span>}
+                </Button>
+              </Link>
+            )}
             
             <Button 
               variant="ghost" 
@@ -56,6 +67,24 @@ const Navbar: React.FC = () => {
             >
               {theme === 'dark' ? <Sun size={isMobile ? 20 : 18} /> : <Moon size={isMobile ? 20 : 18} />}
             </Button>
+
+            {user ? (
+              <Button
+                variant="ghost"
+                size={isMobile ? "icon" : "default"}
+                onClick={handleSignOut}
+                className="text-tea-leaf dark:text-tea-matcha"
+              >
+                <LogOut size={isMobile ? 20 : 18} />
+                {!isMobile && <span className="ml-2">Sign Out</span>}
+              </Button>
+            ) : (
+              <Link to="/login">
+                <Button variant="ghost" size={isMobile ? "icon" : "default"} className="text-tea-leaf dark:text-tea-matcha">
+                  {!isMobile && <span className="ml-2">Sign In</span>}
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </div>

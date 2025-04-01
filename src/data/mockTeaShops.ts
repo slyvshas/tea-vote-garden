@@ -1,4 +1,3 @@
-
 export interface TeaShop {
   id: string;
   name: string;
@@ -22,7 +21,7 @@ export interface TeaShop {
 
 export const mockTeaShops: TeaShop[] = [
   {
-    id: "1",
+    id: "550e8400-e29b-41d4-a716-446655440000",
     name: "Serene Leaf",
     description: "A tranquil tea house specializing in traditional Chinese tea ceremonies and rare oolong varieties.",
     address: "123 Jasmine St, Portland, OR",
@@ -40,7 +39,7 @@ export const mockTeaShops: TeaShop[] = [
     tags: ["Traditional", "Quiet", "Ceremony"],
   },
   {
-    id: "2",
+    id: "550e8400-e29b-41d4-a716-446655440001",
     name: "Matcha Maiden",
     description: "Modern café with specialty matcha drinks and Japanese-inspired pastries.",
     address: "456 Green Ave, Seattle, WA",
@@ -58,7 +57,7 @@ export const mockTeaShops: TeaShop[] = [
     tags: ["Modern", "Japanese", "Pastries"],
   },
   {
-    id: "3",
+    id: "550e8400-e29b-41d4-a716-446655440002",
     name: "Earl's Parlor",
     description: "Victorian-inspired tea room offering classic British tea service and scones.",
     address: "789 Bergamot Blvd, Boston, MA",
@@ -76,7 +75,7 @@ export const mockTeaShops: TeaShop[] = [
     tags: ["British", "Victorian", "Elegant"],
   },
   {
-    id: "4",
+    id: "550e8400-e29b-41d4-a716-446655440003",
     name: "Chai Lounge",
     description: "Cozy spot known for spiced chai blends and Indian-inspired snacks.",
     address: "101 Cardamom Court, Austin, TX",
@@ -94,7 +93,7 @@ export const mockTeaShops: TeaShop[] = [
     tags: ["Spicy", "Cozy", "Indian"],
   },
   {
-    id: "5",
+    id: "550e8400-e29b-41d4-a716-446655440004",
     name: "Bubble Brew",
     description: "Trendy bubble tea shop with innovative fruit and tea combinations.",
     address: "222 Tapioca Terrace, San Francisco, CA",
@@ -112,7 +111,7 @@ export const mockTeaShops: TeaShop[] = [
     tags: ["Trendy", "Sweet", "Bubble Tea"],
   },
   {
-    id: "6",
+    id: "550e8400-e29b-41d4-a716-446655440005",
     name: "Herbal Haven",
     description: "Wellness-focused café featuring herbal tea blends and organic light fare.",
     address: "333 Lavender Lane, Denver, CO",

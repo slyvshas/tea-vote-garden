@@ -1,19 +1,20 @@
-
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useTeaShops } from '@/context/TeaShopContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { toast } from '@/components/ui/use-toast';
-import { useTeaShops } from '@/context/TeaShopContext';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { ImageIcon, Upload } from 'lucide-react';
 
 interface FormData {
   name: string;
   description: string;
   address: string;
-  image: string;
+  image: File | null;
+  imagePreview: string;
   specialty: string;
   hours: {
     open: string;
@@ -25,247 +26,328 @@ interface FormData {
 const AddTeaShopPage: React.FC = () => {
   const navigate = useNavigate();
   const { addTeaShop } = useTeaShops();
-  
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState<FormData>({
     name: '',
     description: '',
     address: '',
-    image: '',
+    image: null,
+    imagePreview: '',
     specialty: '',
     hours: {
       open: '9:00 AM',
-      close: '6:00 PM',
+      close: '5:00 PM'
     },
     tags: '',
   });
-  
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    
-    if (name.includes('.')) {
-      const [parent, child] = name.split('.');
-      setFormData((prev) => ({
+    if (name === 'hours') {
+      const [open, close] = value.split('-').map(h => h.trim());
+      setFormData(prev => ({
         ...prev,
-        [parent]: {
-          ...(prev[parent as keyof FormData] as Record<string, unknown>),
-          [child]: value,
-        },
+        hours: { open, close }
       }));
     } else {
-      setFormData((prev) => ({
+      setFormData(prev => ({
         ...prev,
-        [name]: value,
+        [name]: value
       }));
     }
-    
-    // Clear error when user types
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: '' }));
-    }
   };
-  
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-    
-    if (!formData.name.trim()) {
-      newErrors.name = 'Name is required';
-    }
-    
-    if (!formData.description.trim()) {
-      newErrors.description = 'Description is required';
-    }
-    
-    if (!formData.address.trim()) {
-      newErrors.address = 'Address is required';
-    }
-    
-    if (!formData.image.trim()) {
-      newErrors.image = 'Image URL is required';
-    } else if (!isValidUrl(formData.image)) {
-      newErrors.image = 'Please enter a valid URL';
-    }
-    
-    if (!formData.specialty.trim()) {
-      newErrors.specialty = 'Specialty is required';
-    }
-    
-    if (!formData.tags.trim()) {
-      newErrors.tags = 'At least one tag is required';
-    }
-    
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-  
-  const isValidUrl = (url: string) => {
-    try {
-      new URL(url);
-      return true;
-    } catch (error) {
-      return false;
-    }
-  };
-  
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
+
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
       toast({
-        title: "Form Validation Error",
-        description: "Please fix the errors in the form.",
+        title: "Error",
+        description: "Please select an image file",
         variant: "destructive",
       });
       return;
     }
-    
-    // Convert comma-separated tags to array
-    const tagsArray = formData.tags
-      .split(',')
-      .map((tag) => tag.trim())
-      .filter((tag) => tag !== '');
-    
-    addTeaShop({
-      name: formData.name,
-      description: formData.description,
-      address: formData.address,
-      image: formData.image,
-      specialty: formData.specialty,
-      hours: formData.hours,
-      tags: tagsArray,
-      rating: 0, // Initial rating is 0
-    });
-    
-    navigate('/tea-shops');
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "Error",
+        description: "Image size should be less than 5MB",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Create preview URL
+    const previewUrl = URL.createObjectURL(file);
+    setFormData(prev => ({
+      ...prev,
+      image: file,
+      imagePreview: previewUrl
+    }));
   };
-  
-  return (
-    <div className="max-w-2xl mx-auto animate-fade-in">
-      <h1 className="text-3xl font-bold mb-8 text-tea-earl dark:text-tea-cream">
-        Add a New Tea Shop
-      </h1>
+
+  const uploadImage = async (file: File): Promise<string> => {
+    try {
+      setIsUploading(true);
       
-      <Card className="bg-white dark:bg-gray-800">
+      // Create a unique filename
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      const { error: uploadError, data } = await supabase.storage
+        .from('tea-shop-images')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      // Get the public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('tea-shop-images')
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      throw error;
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const validateForm = () => {
+    if (!formData.name.trim()) {
+      toast({
+        title: "Error",
+        description: "Name is required",
+        variant: "destructive",
+      });
+      return false;
+    }
+    if (!formData.description.trim()) {
+      toast({
+        title: "Error",
+        description: "Description is required",
+        variant: "destructive",
+      });
+      return false;
+    }
+    if (!formData.address.trim()) {
+      toast({
+        title: "Error",
+        description: "Address is required",
+        variant: "destructive",
+      });
+      return false;
+    }
+    if (!formData.image) {
+      toast({
+        title: "Error",
+        description: "Please select an image",
+        variant: "destructive",
+      });
+      return false;
+    }
+    return true;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validateForm()) {
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      // Upload image first
+      const imageUrl = await uploadImage(formData.image!);
+
+      // Create new shop with the uploaded image URL
+      const newShop = {
+        name: formData.name,
+        description: formData.description,
+        address: formData.address,
+        image: imageUrl,
+        specialty: formData.specialty,
+        hours: formData.hours,
+        tags: formData.tags.split(',').map(tag => tag.trim()).filter(Boolean),
+        rating: 0,
+        votes: { upvotes: 0, downvotes: 0 }
+      };
+
+      await addTeaShop(newShop);
+      
+      toast({
+        title: "Success",
+        description: "Tea shop added successfully!",
+      });
+      
+      navigate('/tea-shops');
+    } catch (error) {
+      console.error('Error adding tea shop:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add tea shop. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="container max-w-2xl py-8">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-tea-earl dark:text-tea-cream">
-            Tea Shop Information
-          </CardTitle>
+          <CardTitle>Add New Tea Shop</CardTitle>
+          <CardDescription>
+            Fill in the details to add a new tea shop to our collection
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <Input 
+              <label htmlFor="name" className="text-sm font-medium">
+                Shop Name
+              </label>
+              <Input
                 id="name"
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                placeholder="Tea shop name"
-                className={errors.name ? 'border-red-500' : ''}
+                placeholder="Enter the tea shop name"
               />
-              {errors.name && <p className="text-red-500 text-sm">{errors.name}</p>}
             </div>
-            
+
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
-              <Textarea 
+              <label htmlFor="description" className="text-sm font-medium">
+                Description
+              </label>
+              <Textarea
                 id="description"
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
-                placeholder="Describe the tea shop..."
-                className={errors.description ? 'border-red-500' : ''}
+                placeholder="Describe the tea shop"
                 rows={4}
               />
-              {errors.description && <p className="text-red-500 text-sm">{errors.description}</p>}
             </div>
-            
+
             <div className="space-y-2">
-              <Label htmlFor="address">Address</Label>
-              <Input 
+              <label htmlFor="address" className="text-sm font-medium">
+                Address
+              </label>
+              <Input
                 id="address"
                 name="address"
                 value={formData.address}
                 onChange={handleChange}
-                placeholder="123 Tea St, Leaf City"
-                className={errors.address ? 'border-red-500' : ''}
+                placeholder="Enter the shop's address"
               />
-              {errors.address && <p className="text-red-500 text-sm">{errors.address}</p>}
             </div>
-            
+
             <div className="space-y-2">
-              <Label htmlFor="image">Image URL</Label>
-              <Input 
-                id="image"
-                name="image"
-                value={formData.image}
-                onChange={handleChange}
-                placeholder="https://example.com/image.jpg"
-                className={errors.image ? 'border-red-500' : ''}
-              />
-              {errors.image && <p className="text-red-500 text-sm">{errors.image}</p>}
+              <label className="text-sm font-medium">
+                Shop Image
+              </label>
+              <div className="flex items-center space-x-4">
+                <div className="relative w-32 h-32 border-2 border-dashed rounded-lg overflow-hidden">
+                  {formData.imagePreview ? (
+                    <img
+                      src={formData.imagePreview}
+                      alt="Preview"
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-muted">
+                      <ImageIcon className="h-8 w-8 text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleImageChange}
+                    accept="image/*"
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploading}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    {isUploading ? "Uploading..." : "Select Image"}
+                  </Button>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Recommended size: 800x600px. Max size: 5MB
+                  </p>
+                </div>
+              </div>
             </div>
-            
+
             <div className="space-y-2">
-              <Label htmlFor="specialty">Specialty Tea</Label>
-              <Input 
+              <label htmlFor="specialty" className="text-sm font-medium">
+                Specialty
+              </label>
+              <Input
                 id="specialty"
                 name="specialty"
                 value={formData.specialty}
                 onChange={handleChange}
-                placeholder="Matcha, Oolong, etc."
-                className={errors.specialty ? 'border-red-500' : ''}
+                placeholder="What is this shop known for?"
               />
-              {errors.specialty && <p className="text-red-500 text-sm">{errors.specialty}</p>}
             </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="hours.open">Opening Time</Label>
-                <Input 
-                  id="hours.open"
-                  name="hours.open"
-                  value={formData.hours.open}
-                  onChange={handleChange}
-                  placeholder="9:00 AM"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="hours.close">Closing Time</Label>
-                <Input 
-                  id="hours.close"
-                  name="hours.close"
-                  value={formData.hours.close}
-                  onChange={handleChange}
-                  placeholder="6:00 PM"
-                />
-              </div>
-            </div>
-            
+
             <div className="space-y-2">
-              <Label htmlFor="tags">Tags (comma-separated)</Label>
-              <Input 
+              <label htmlFor="hours" className="text-sm font-medium">
+                Operating Hours
+              </label>
+              <Input
+                id="hours"
+                name="hours"
+                value={`${formData.hours.open} - ${formData.hours.close}`}
+                onChange={handleChange}
+                placeholder="e.g., 9:00 AM - 5:00 PM"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="tags" className="text-sm font-medium">
+                Tags (comma-separated)
+              </label>
+              <Input
                 id="tags"
                 name="tags"
                 value={formData.tags}
                 onChange={handleChange}
-                placeholder="cozy, traditional, bubble tea"
-                className={errors.tags ? 'border-red-500' : ''}
+                placeholder="e.g., traditional, modern, organic"
               />
-              {errors.tags && <p className="text-red-500 text-sm">{errors.tags}</p>}
             </div>
-            
-            <div className="flex space-x-4 pt-4">
-              <Button type="submit" className="bg-tea-leaf hover:bg-tea-leaf/90 text-white">
-                Add Tea Shop
-              </Button>
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => navigate(-1)}
+
+            <div className="flex justify-end space-x-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate('/tea-shops')}
+                disabled={isLoading || isUploading}
               >
                 Cancel
+              </Button>
+              <Button type="submit" disabled={isLoading || isUploading}>
+                {isLoading ? "Adding..." : "Add Tea Shop"}
               </Button>
             </div>
           </form>
@@ -275,4 +357,4 @@ const AddTeaShopPage: React.FC = () => {
   );
 };
 
-export default AddTeaShopPage;
+export default AddTeaShopPage; 

@@ -2,10 +2,32 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = "https://qtywqrzddfwmfuippcoa.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF0eXdxcnpkZGZ3bWZ1aXBwY29hIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM0MjgxNzEsImV4cCI6MjA1OTAwNDE3MX0.ejwkIEtlYyzi9w0QzznuhIm02Jkmd0EcK7Wsra1TicI";
+// Get the environment variables
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables');
+}
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// Test the connection
+const testConnection = async () => {
+  try {
+    const { data, error } = await supabase.from('tea_shops').select('*').limit(1);
+    if (error) {
+      console.error('Supabase connection error:', error);
+    } else {
+      console.log('Supabase connection successful!');
+    }
+  } catch (error) {
+    console.error('Supabase connection error:', error);
+  }
+};
+
+// Run the connection test
+testConnection();
