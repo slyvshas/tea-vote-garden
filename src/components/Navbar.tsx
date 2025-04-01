@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Sun, Moon, Home, List, PlusCircle, LogOut } from 'lucide-react';
+import { Sun, Moon, Home, List, PlusCircle, LogOut, LogIn } from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAuth } from '@/context/AuthContext';
@@ -81,6 +81,7 @@ const Navbar: React.FC = () => {
             ) : (
               <Link to="/login">
                 <Button variant="ghost" size={isMobile ? "icon" : "default"} className="text-tea-leaf dark:text-tea-matcha">
+                  <LogIn size={isMobile ? 20 : 18} />
                   {!isMobile && <span className="ml-2">Sign In</span>}
                 </Button>
               </Link>

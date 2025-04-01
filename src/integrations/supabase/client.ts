@@ -3,17 +3,14 @@ import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
 // Get the environment variables
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables');
-}
-
-// Import the supabase client like this:
-// import { supabase } from "@/integrations/supabase/client";
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Create the Supabase client
+export const supabase = createClient(
+  supabaseUrl || 'https://fpkkfuxdleqdlstrexzy.supabase.co',
+  supabaseAnonKey || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZwa2tmdXhkbGVxZGxzdHJleHp5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM0MzgwMTMsImV4cCI6MjA1OTAxNDAxM30.rdO86r5YuyEe8JJN-K6yifNTSlyF_haynD3jjNpHkhg'
+);
 
 // Test the connection
 const testConnection = async () => {
